@@ -20,8 +20,8 @@ namespace Autocleaner
         public bool active = true;
         public float charge;
 
-        public bool Broken => health.hediffSet.hediffs.Count( x => x.def.isBad ) > 0;
-        public bool LowPower => charge < AutoDef.charge * lowLower;
+        public bool Broken => health?.hediffSet?.hediffs?.Count( x => x.def.isBad ) > 0;
+        public bool LowPower => AutoDef?.charge != null && charge < AutoDef.charge * lowLower;
         public Thing charger = null;
 
         public PawnAutocleaner()
@@ -42,12 +42,17 @@ namespace Autocleaner
         {
             base.PostApplyDamage(dinfo, totalDamageDealt);
 
-            if(jobs!=null) jobs.StopAll(false, true);
+            if(jobs!=null && !Dead) jobs.StopAll(false, true);
+            
+            // Clean up charger if we're dead
+            if (Dead) StopCharging();
         }
 
         public void StartCharging()
         {
             StopCharging();
+
+            if (Dead || Map == null || AutoDef?.charger == null) return;
 
             charger = GenSpawn.Spawn(AutoDef.charger, Position, Map);       
         }
@@ -64,6 +69,9 @@ namespace Autocleaner
         {
             base.Tick();
 
+            // Don't process ticks if we're dead
+            if (Dead) return;
+
             if (!this.IsHashIntervalTick(AutoDef.dischargePeriodTicks)) return;
 
             AutocleanerJobDef job = CurJobDef as AutocleanerJobDef;
@@ -76,6 +84,16 @@ namespace Autocleaner
 
         public override IEnumerable<Gizmo> GetGizmos()
         {
+            // Don't show gizmos if we're dead
+            if (Dead)
+            {
+                foreach (Gizmo gizmo in base.GetGizmos())
+                {
+                    yield return gizmo;
+                }
+                yield break;
+            }
+
             if (Find.Selector.SingleSelectedThing == this)
             {
                 yield return new GizmoAutocleaner
@@ -143,7 +161,7 @@ namespace Autocleaner
 
         public override string GetInspectString()
         {
-            if (charger == null) return base.GetInspectString();
+            if (charger == null || Dead) return base.GetInspectString();
 
             StringBuilder stringBuilder = new StringBuilder();
             stringBuilder.Append(base.GetInspectString());
@@ -156,6 +174,9 @@ namespace Autocleaner
         protected override void DrawAt(Vector3 drawLoc, bool flip = false)
         {
             base.DrawAt(drawLoc, flip);
+
+            // Don't draw overlays if we're dead (corpse) or if Map is null
+            if (Dead || Map == null || Map.overlayDrawer == null) return;
 
             OverlayTypes overlay = OverlayTypes.Forbidden;
 
