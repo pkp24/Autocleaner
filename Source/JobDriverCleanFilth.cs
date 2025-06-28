@@ -30,6 +30,12 @@ namespace Autocleaner
             PawnAutocleaner cleaner = pawn as PawnAutocleaner;
             AutocleanerJobDef def = job.def as AutocleanerJobDef;
 
+            if (cleaner == null || def == null)
+            {
+                EndJobWith(JobCondition.Incompletable);
+                yield break;
+            }
+
             CompPowerTrader comp = pawn.TryGetComp<CompPowerTrader>();
             if (comp != null) PowerConnectionMaker.DisconnectFromPowerNet(comp);
 
@@ -41,6 +47,11 @@ namespace Autocleaner
             Toil clean = new Toil();
             clean.initAction = delegate ()
             {
+                if (Filth == null || cleaner == null || def == null || cleaner.AutoDef == null)
+                {
+                    EndJobWith(JobCondition.Incompletable);
+                    return;
+                }
                 cleaningWorkDone = 0f;
                 totalCleaningWorkDone = 0f;
                 totalCleaningWorkRequired = Filth.def.filth.cleaningWorkToReduceThickness * Filth.thickness;
@@ -48,18 +59,20 @@ namespace Autocleaner
             clean.tickAction = delegate ()
             {
                 Filth filth = Filth;
+                if (filth == null || cleaner == null || def == null || cleaner.AutoDef == null)
+                {
+                    EndJobWith(JobCondition.Incompletable);
+                    return;
+                }
                 cleaningWorkDone += 1f;
                 totalCleaningWorkDone += 1f;
 
-                if (cleaner != null && def != null)
-                {
-                    cleaner.charge -= def.activeDischargePerSecond / cleaner.AutoDef.dischargePeriodTicks;
+                cleaner.charge -= def.activeDischargePerSecond / cleaner.AutoDef.dischargePeriodTicks;
 
-                    if (cleaner.LowPower)
-                    {
-                        EndJobWith(JobCondition.Incompletable);
-                        return;
-                    }
+                if (cleaner.LowPower)
+                {
+                    EndJobWith(JobCondition.Incompletable);
+                    return;
                 }
 
                 if (cleaningWorkDone > filth.def.filth.cleaningWorkToReduceThickness)
@@ -68,7 +81,10 @@ namespace Autocleaner
                     cleaningWorkDone = 0f;
                     if (filth.Destroyed)
                     {
-                        clean.actor.records.Increment(RecordDefOf.MessesCleaned);
+                        if (clean.actor != null && clean.actor.records != null)
+                        {
+                            clean.actor.records.Increment(RecordDefOf.MessesCleaned);
+                        }
                         ReadyForNextToil();
                         return;
                     }

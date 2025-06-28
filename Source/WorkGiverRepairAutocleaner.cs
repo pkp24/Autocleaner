@@ -11,9 +11,9 @@ namespace Autocleaner
 {
     class WorkGiverRepairAutocleaner : WorkGiver_Scanner
     {
-        public override PathEndMode PathEndMode => PathEndMode.Touch;
+        public override PathEndMode PathEndMode { get { return PathEndMode.Touch; } }
 
-        public override ThingRequest PotentialWorkThingRequest => ThingRequest.ForDef(Globals.Autocleaner);
+        public override ThingRequest PotentialWorkThingRequest { get { return ThingRequest.ForDef(Globals.Autocleaner); } }
 
         public override IEnumerable<Thing> PotentialWorkThingsGlobal(Pawn pawn)
         {

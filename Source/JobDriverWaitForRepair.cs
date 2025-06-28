@@ -34,6 +34,11 @@ namespace Autocleaner
                 },
                 tickAction = delegate ()
                 {
+                    if (cleaner == null || def == null || cleaner.AutoDef == null)
+                    {
+                        EndJobWith(JobCondition.Incompletable);
+                        return;
+                    }
                     if (!pawn.IsHashIntervalTick(60)) return;
 
                     if (cleaner.charge < cleaner.AutoDef.charge * 0.75f)

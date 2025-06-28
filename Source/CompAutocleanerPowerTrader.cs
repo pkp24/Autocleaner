@@ -16,11 +16,6 @@ namespace Autocleaner
            
         }
 
-        public override void PostDeSpawn(Map map)
-        {
-            map.powerNetManager.Notify_ConnectorDespawned(this);
-            map.mapDrawer.MapMeshDirty(parent.Position, MapMeshFlagDefOf.PowerGrid, true, false);
-        }
         public override void LostConnectParent()
         {
 

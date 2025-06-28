@@ -77,7 +77,8 @@
       <foodType>None</foodType>
       <lifeExpectancy>2500</lifeExpectancy>
       <bloodDef>Filth_MachineBits</bloodDef>
-      <animal>false</animal>
+      <hasMeat>false</hasMeat>
+      <hasCorpse>false</hasCorpse>
     </race>
   </ThingDef>
 
@@ -119,6 +120,8 @@
       <renderTree>Misc</renderTree>
       <baseBodySize>0.75</baseBodySize>
       <baseHealthScale>1.0</baseHealthScale>
+      <hasMeat>false</hasMeat>
+      <hasCorpse>false</hasCorpse>
       <lifeStageAges>
         <li>
           <def>MechanoidFullyFormed</def>
@@ -129,7 +132,6 @@
       <soundMeleeHitPawn>Pawn_Melee_MechanoidBash_HitPawn</soundMeleeHitPawn>
       <soundMeleeHitBuilding>Pawn_Melee_MechanoidBash_HitBuilding</soundMeleeHitBuilding>
       <soundMeleeMiss>Pawn_Melee_MechanoidBash_Miss</soundMeleeMiss>
-      <animal>false</animal>
     </race>
     <butcherProducts>
       <Steel>25</Steel>
@@ -146,6 +148,9 @@
     <race>Autocleaner</race>
     <combatPower>1</combatPower>
     <defaultFactionType>PlayerColony</defaultFactionType>
+    <isFighter>false</isFighter>
+    <canArriveManhunter>false</canArriveManhunter>
+    <canBeSapper>false</canBeSapper>
     <lifeStages>
       <li>
         <bodyGraphicData>

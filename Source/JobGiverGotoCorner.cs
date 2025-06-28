@@ -31,7 +31,7 @@ namespace Autocleaner
             }
 
             CompPower comp = PowerConnectionMaker.BestTransmitterForConnector(pos, map);
-            if (comp?.PowerNet == null) return false;
+            if (comp == null || comp.PowerNet == null) return false;
 
             return comp.PowerNet.HasActivePowerSource;
         }
@@ -85,7 +85,13 @@ namespace Autocleaner
 
             Map map = pawn.Map;
             if (map == null) return null;
+            
+            // If we're at a suitable position (has power), don't move
             if (SuitablePosition(pawn.Position, map)) return null;
+            
+            // If we have plenty of power and we're not at a suitable position, 
+            // we might want to move to a better position, but it's not urgent
+            if (cleaner.charge > cleaner.AutoDef.charge * 0.5f) return null;
 
             IntVec3 target = Autocleaner.settings.lowQualityPathing ? FindSuitablePositionRandom(pawn, map, pawn.Position) : FindSuitablePosition(pawn, map, pawn.Position);
             if (target != IntVec3.Invalid)

@@ -16,7 +16,8 @@ namespace Autocleaner
 
         public PawnAutocleaner cleaner;
 
-        public override float Order { get; set; } = 200f;
+        private float _order = 200f;
+        public override float Order { get { return _order; } set { _order = value; } }
 
         public override float GetWidth(float maxWidth)
         {

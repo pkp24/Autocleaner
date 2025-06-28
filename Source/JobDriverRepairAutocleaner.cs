@@ -36,7 +36,7 @@ namespace Autocleaner
                 if (workDone >= workNeeded)
                 {
                     PawnAutocleaner cleaner = TargetThingA as PawnAutocleaner;
-                    if (cleaner == null)
+                    if (cleaner == null || TargetThingA == null)
                     {
                         EndJobWith(JobCondition.Incompletable);
                         return;

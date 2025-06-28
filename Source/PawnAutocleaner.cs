@@ -15,19 +15,74 @@ namespace Autocleaner
     {
         static public float lowLower = 0.25f;
 
-        public AutocleanerDef AutoDef => def as AutocleanerDef;
+        public AutocleanerDef AutoDef { get { return def as AutocleanerDef; } }
 
         public bool active = true;
         public float charge;
+        public int lastJobTick;
 
-        public bool Broken => health?.hediffSet?.hediffs?.Count( x => x.def.isBad ) > 0;
-        public bool LowPower => AutoDef?.charge != null && charge < AutoDef.charge * lowLower;
+        public bool Broken {
+            get {
+                if (health != null && health.hediffSet != null && health.hediffSet.hediffs != null) {
+                    int badCount = 0;
+                    foreach (var x in health.hediffSet.hediffs) {
+                        if (x.def.isBad) badCount++;
+                    }
+                    return badCount > 0;
+                }
+                return false;
+            }
+        }
+        public bool LowPower {
+            get {
+                var autoDef = AutoDef;
+                if (autoDef != null) {
+                    return charge < autoDef.charge * lowLower;
+                }
+                return false;
+            }
+        }
         public Thing charger = null;
 
         public PawnAutocleaner()
         {
-            if (relations == null) relations = new Pawn_RelationsTracker(this);
-            if (thinker == null) thinker = new Pawn_Thinker(this);
+            Log.Message("[Autocleaner] PawnAutocleaner constructor called");
+            
+            if (relations == null) 
+            {
+                Log.Message("[Autocleaner] Creating relations tracker");
+                relations = new Pawn_RelationsTracker(this);
+            }
+            if (thinker == null) 
+            {
+                Log.Message("[Autocleaner] Creating thinker");
+                thinker = new Pawn_Thinker(this);
+            }
+            lastJobTick = 0;
+            
+            // Ensure training tracker is never created for autocleaners
+            if (training != null)
+            {
+                Log.Message("[Autocleaner] Removing training tracker");
+                training = null;
+            }
+            
+            // Initialize charge if not set and def is available
+            if (charge <= 0 && def != null && AutoDef != null)
+            {
+                Log.Message($"[Autocleaner] Initializing charge to {AutoDef.charge}");
+                charge = AutoDef.charge;
+            }
+            else if (def == null)
+            {
+                Log.Warning("[Autocleaner] PawnAutocleaner constructor: def is null - this may cause issues");
+            }
+            else if (AutoDef == null)
+            {
+                Log.Warning("[Autocleaner] PawnAutocleaner constructor: AutoDef is null - def may not be AutocleanerDef");
+            }
+            
+            Log.Message($"[Autocleaner] PawnAutocleaner constructor completed for {def?.defName ?? "NULL"}");
         }
 
         public override void ExposeData()
@@ -36,6 +91,7 @@ namespace Autocleaner
 
             Scribe_Values.Look(ref active, "autocleanerActive");
             Scribe_Values.Look(ref charge, "autocleanerCharge");
+            Scribe_Values.Look(ref lastJobTick, "autocleanerLastJobTick");
         }
 
         public override void PostApplyDamage(DamageInfo dinfo, float totalDamageDealt)
@@ -50,27 +106,66 @@ namespace Autocleaner
 
         public void StartCharging()
         {
+            Log.Message($"[Autocleaner] StartCharging called for {LabelShort ?? "NULL"}");
+            
             StopCharging();
 
-            if (Dead || Map == null || AutoDef?.charger == null) return;
+            if (Dead) 
+            {
+                Log.Warning("[Autocleaner] StartCharging: Pawn is dead");
+                return;
+            }
+            if (Map == null) 
+            {
+                Log.Warning("[Autocleaner] StartCharging: Map is null");
+                return;
+            }
+            if (AutoDef == null) 
+            {
+                Log.Warning("[Autocleaner] StartCharging: AutoDef is null");
+                return;
+            }
+            if (AutoDef.charger == null) 
+            {
+                Log.Warning("[Autocleaner] StartCharging: AutoDef.charger is null");
+                return;
+            }
 
-            charger = GenSpawn.Spawn(AutoDef.charger, Position, Map);       
+            Log.Message($"[Autocleaner] StartCharging: Spawning charger at {Position}");
+            charger = GenSpawn.Spawn(AutoDef.charger, Position, Map);
+            Log.Message($"[Autocleaner] StartCharging: Charger spawned: {charger != null}");
         }
 
         public void StopCharging()
         {
             if (charger == null) return;
 
+            Log.Message($"[Autocleaner] StopCharging: Destroying charger for {LabelShort ?? "NULL"}");
             if(charger.Spawned) charger.Destroy();
             charger = null;
         }
 
-        public override void Tick()
+        protected override void Tick()
         {
             base.Tick();
 
             // Don't process ticks if we're dead
             if (Dead) return;
+
+            // Remove any toxic hediffs that might have been applied (check every 60 ticks = once per second)
+            if (this.IsHashIntervalTick(60) && health != null && health.hediffSet != null && health.hediffSet.hediffs != null && health.hediffSet.hediffs.Count > 0)
+            {
+                var toxicHediffs = health.hediffSet.hediffs.Where(h => 
+                    h.def.defName.Contains("Toxic") || 
+                    h.def.defName.Contains("Poison") ||
+                    h.def.defName.Contains("Toxicity") ||
+                    h.def.defName.Contains("ToxicBuildup")).ToList();
+                
+                foreach (var hediff in toxicHediffs)
+                {
+                    health.RemoveHediff(hediff);
+                }
+            }
 
             if (!this.IsHashIntervalTick(AutoDef.dischargePeriodTicks)) return;
 
@@ -190,5 +285,33 @@ namespace Autocleaner
         static Texture2D iconUninstall = ContentFinder<Texture2D>.Get("UI/Designators/Uninstall", true);
         static Texture2D iconPause = ContentFinder<Texture2D>.Get("Autocleaner/Pause", true);
         static Texture2D iconResume = ContentFinder<Texture2D>.Get("Autocleaner/Resume", true);
+
+        public override void SpawnSetup(Map map, bool respawningAfterLoad)
+        {
+            base.SpawnSetup(map, respawningAfterLoad);
+            
+            Log.Message($"[Autocleaner] SpawnSetup called for {LabelShort ?? "NULL"}");
+            
+            // Ensure we have a proper def
+            if (def == null)
+            {
+                Log.Error("[Autocleaner] SpawnSetup: def is null!");
+                return;
+            }
+            
+            // Initialize charge if not set
+            if (charge <= 0 && AutoDef != null)
+            {
+                Log.Message($"[Autocleaner] SpawnSetup: Initializing charge to {AutoDef.charge}");
+                charge = AutoDef.charge;
+            }
+            
+            // Ensure training tracker is never created
+            if (training != null)
+            {
+                Log.Message("[Autocleaner] SpawnSetup: Removing training tracker");
+                training = null;
+            }
+        }
     }
 }

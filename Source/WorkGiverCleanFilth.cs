@@ -42,11 +42,19 @@ namespace Autocleaner
 
         public override bool ShouldSkip(Pawn pawn, bool forced)
         {
+            // Only autocleaner pawns should use this work giver
+            if (!(pawn is PawnAutocleaner))
+                return true;
+                
             return pawn.Map.listerFilthInHomeArea.FilthInHomeArea.Count == 0;
         }
 
         public override bool HasJobOnThing(Pawn pawn, Thing t, bool forced = false)
         {
+            // Only autocleaner pawns should use this work giver
+            if (!(pawn is PawnAutocleaner))
+                return false;
+                
             Filth filth = t as Filth;
 
             return filth != null && filth.Map != null && filth.Position.InAllowedArea(pawn) && filth.Map.areaManager.Home[filth.Position] && pawn.CanReserve(t, 1, -1, null, forced) && filth.TicksSinceThickened >= MinTicksSinceThickened;
@@ -54,9 +62,13 @@ namespace Autocleaner
 
         public override Job JobOnThing(Pawn pawn, Thing t, bool forced = false)
         {
+            // Only autocleaner pawns should use this work giver
+            if (!(pawn is PawnAutocleaner))
+                return null;
+                
             Job job = JobMaker.MakeJob(Globals.AutocleanerClean);
             job.AddQueuedTarget(TargetIndex.A, t);
-            int num = 15;
+            int num = 5;
             Map map = t.Map;
             Room room = t.GetRoom(RegionType.Set_Passable);
             for (int i = 0; i < 100; i++)
@@ -79,7 +91,7 @@ namespace Autocleaner
                     }
                 }
             }
-            if (job.targetQueueA != null && job.targetQueueA.Count >= 5)
+            if (job.targetQueueA != null && job.targetQueueA.Count >= 3)
             {
                 job.targetQueueA.SortBy((LocalTargetInfo targ) => targ.Cell.DistanceToSquared(pawn.Position));
             }

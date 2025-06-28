@@ -17,6 +17,7 @@ namespace Autocleaner
             {
                 initAction = delegate
                 {
+                    if (pawn == null) return;
                     pawn.Rotation = pawn.Rotation.Opposite;
                 }
             };
