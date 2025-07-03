@@ -21,4 +21,7 @@
 
   <AutocleanerDisableScheduleName>Disable area assignment</AutocleanerDisableScheduleName>
   <AutocleanerDisableScheduleDesc>Prevents autocleaners from appearing in "Schedule" tab, for mod compatibility.</AutocleanerDisableScheduleDesc>
+
+  <AutocleanerEnableDebugLoggingName>Enable debug logging</AutocleanerEnableDebugLoggingName>
+  <AutocleanerEnableDebugLoggingDesc>Enables detailed debug messages in the log file. Useful for troubleshooting issues with autocleaners.</AutocleanerEnableDebugLoggingDesc>
 </LanguageData>

@@ -320,6 +320,7 @@
     <Compile Include="CompAutocleanerPowerTrader.cs" />
     <Compile Include="CompStoreAutocleaner.cs" />
     <Compile Include="AutocleanerDef.cs" />
+    <Compile Include="DebugLog.cs" />
     <Compile Include="GizmoAutocleaner.cs" />
     <Compile Include="Globals.cs" />
     <Compile Include="JobDriverCharge.cs" />
