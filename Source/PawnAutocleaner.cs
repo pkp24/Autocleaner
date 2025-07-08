@@ -67,11 +67,15 @@ namespace Autocleaner
                 training = null;
             }
             
-            // Initialize charge if not set and def is available
-            if (charge <= 0 && def != null && AutoDef != null)
+            // Clamp charge to valid range. New autocleaners start at 0% charge
+            if (def != null && AutoDef != null)
             {
-                DebugLog.Message($"[Autocleaner] Initializing charge to {AutoDef.charge}");
-                charge = AutoDef.charge;
+                if (charge < 0)
+                    charge = 0;
+                if (charge > AutoDef.charge)
+                    charge = AutoDef.charge;
+
+                DebugLog.Message($"[Autocleaner] Initializing charge to {charge}");
             }
             else if (def == null)
             {
@@ -299,11 +303,15 @@ namespace Autocleaner
                 return;
             }
             
-            // Initialize charge if not set
-            if (charge <= 0 && AutoDef != null)
+            // Clamp charge when spawning
+            if (AutoDef != null)
             {
-                DebugLog.Message($"[Autocleaner] SpawnSetup: Initializing charge to {AutoDef.charge}");
-                charge = AutoDef.charge;
+                if (charge < 0)
+                    charge = 0;
+                if (charge > AutoDef.charge)
+                    charge = AutoDef.charge;
+
+                DebugLog.Message($"[Autocleaner] SpawnSetup: charge set to {charge}");
             }
             
             // Ensure training tracker is never created
@@ -312,6 +320,91 @@ namespace Autocleaner
                 DebugLog.Message("[Autocleaner] SpawnSetup: Removing training tracker");
                 training = null;
             }
+
+            // If spawned with no charge, immediately look for a charging spot
+            if (map != null && charge <= 0)
+            {
+                // Search the entire map for a powered corner before giving up
+                int cells = map.Size.x * map.Size.z;
+                IntVec3 dest = FindChargingSpot(map, Position, cells);
+                if (dest.IsValid && dest != Position)
+                {
+                    DebugLog.Message($"[Autocleaner] SpawnSetup: Moving to charging spot at {dest}");
+                    jobs?.StartJob(JobMaker.MakeJob(Globals.AutocleanerGoto, dest), JobCondition.InterruptForced);
+                }
+                else
+                {
+                    DebugLog.Message("[Autocleaner] SpawnSetup: No power found. Deactivating");
+                    jobs?.StopAll(false, true);
+                    active = false;
+                }
+            }
+        }
+
+        // Look for a nearby powered corner to charge at
+        static TraverseParms traverseParamsSpawn = TraverseParms.For(TraverseMode.NoPassClosedDoors);
+        IntVec3 FindChargingSpot(Map map, IntVec3 start, int maxCells = 3000)
+        {
+            if (map == null) return IntVec3.Invalid;
+
+            DebugLog.Message($"[Autocleaner] FindChargingSpot: searching from {start}");
+
+            Predicate<Thing> hasPower = t =>
+            {
+                CompPower comp = t.TryGetComp<CompPower>();
+                return comp != null && comp.PowerNet != null && comp.PowerNet.HasActivePowerSource;
+            };
+
+            Thing powerThing = GenClosest.ClosestThingReachable(start, map,
+                ThingRequest.ForGroup(ThingRequestGroup.BuildingArtificial), PathEndMode.Touch,
+                traverseParamsSpawn, 9999f, hasPower);
+
+            if (powerThing != null)
+            {
+                DebugLog.Message($"[Autocleaner] FindChargingSpot: found powered thing {powerThing.Label} at {powerThing.Position}");
+                foreach (IntVec3 cell in GenAdj.CellsAdjacent8Way(powerThing))
+                {
+                    if (ValidChargingCell(cell, map) && this.CanReach(cell, PathEndMode.OnCell, Danger.Deadly))
+                    {
+                        DebugLog.Message($"[Autocleaner] FindChargingSpot: using adjacent cell {cell}");
+                        return cell;
+                    }
+                }
+                foreach (IntVec3 cell in GenAdj.CellsAdjacent8Way(powerThing))
+                {
+                    if (ValidChargingCell(cell, map, true) && this.CanReach(cell, PathEndMode.OnCell, Danger.Deadly))
+                    {
+                        DebugLog.Message($"[Autocleaner] FindChargingSpot: using fallback cell {cell}");
+                        return cell;
+                    }
+                }
+            }
+
+            DebugLog.Message("[Autocleaner] FindChargingSpot: no powered thing found");
+            return IntVec3.Invalid;
+        }
+
+        bool ValidChargingCell(IntVec3 pos, Map map, bool fallback = false)
+        {
+            if (!pos.InBounds(map)) return false;
+            // Roof not strictly required for charging
+            if (!pos.Standable(map)) return false;
+
+            if (!fallback)
+            {
+                int blocked = 0;
+                if (new IntVec3(pos.x + 1, pos.y, pos.z).Impassable(map)) blocked++;
+                if (new IntVec3(pos.x - 1, pos.y, pos.z).Impassable(map)) blocked++;
+                if (new IntVec3(pos.x, pos.y, pos.z + 1).Impassable(map)) blocked++;
+                if (new IntVec3(pos.x, pos.y, pos.z - 1).Impassable(map)) blocked++;
+
+                if (blocked < 2) return false;
+            }
+
+            CompPower comp = PowerConnectionMaker.BestTransmitterForConnector(pos, map);
+            if (comp == null || comp.PowerNet == null) return false;
+
+            return comp.PowerNet.HasActivePowerSource;
         }
     }
 }
