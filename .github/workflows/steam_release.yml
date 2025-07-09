@@ -1,0 +1,89 @@
+name: Steam Workshop Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  build_and_release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set VERSION env
+        run: echo VERSION=${GITHUB_REF:11} >> $GITHUB_ENV
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '6.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore Source/Autocleaner.csproj
+
+      - name: Build mod
+        run: dotnet build Source/Autocleaner.csproj --configuration Release --no-restore
+
+      - name: Create release package
+        run: |
+          # Create a temporary directory for the release
+          mkdir -p temp_release
+          
+          # Copy the mod files to the release directory
+          cp -r About temp_release/
+          cp -r Assemblies temp_release/
+          cp -r Defs temp_release/
+          cp -r Languages temp_release/
+          cp -r Sounds temp_release/
+          cp -r Textures temp_release/
+
+      - name: Upload to Steam Workshop
+        uses: arma-actions/workshop-upload@v1
+        with:
+          appId: '294100'    # RimWorld App ID
+          itemId: '${{ secrets.STEAM_WORKSHOP_ITEM_ID }}' # Your mod's Workshop Item ID
+          contentPath: 'temp_release'
+          changelog: 'Release ${{ env.VERSION }} - See GitHub release notes for details'
+        env:
+          STEAM_USERNAME: ${{ secrets.STEAM_USERNAME }}
+          STEAM_PASSWORD: ${{ secrets.STEAM_PASSWORD }}
+
+      - name: Create GitHub Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ env.VERSION }}
+          release_name: Autocleaner ${{ env.VERSION }}
+          body: |
+            ## Autocleaner ${{ env.VERSION }}
+            
+            This release has been automatically built and uploaded to Steam Workshop.
+            
+            ### Changes
+            - See the commit history for detailed changes
+            
+            ### Installation
+            - Subscribe to the mod on Steam Workshop
+            - Or download the zip file and place it in your RimWorld Mods folder
+          draft: false
+          prerelease: false
+
+      - name: Create GitHub Release Asset
+        run: |
+          # Create a zip file for GitHub release
+          cd temp_release
+          zip -r ../Autocleaner-${{ env.VERSION }}.zip .
+          cd ..
+
+      - name: Upload Release Assets
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./Autocleaner-${{ env.VERSION }}.zip
+          asset_name: Autocleaner-${{ env.VERSION }}.zip
+          asset_content_type: application/zip

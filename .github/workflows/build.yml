@@ -8,11 +8,19 @@ env:
   DLL_DEST_PATH: 1.6/Assemblies       # final DLL location (repo-root/1.6/Assemblies)
 
 ################################################################################
-# Build on pushes/PRs to any branch
+# Build only on changes to source code files
 ################################################################################
 on:
   push:
+    paths:
+      - 'Source/**/*.cs'
+      - 'Source/**/*.csproj'
+      - 'Source/**/*.xml'
   pull_request:
+    paths:
+      - 'Source/**/*.cs'
+      - 'Source/**/*.csproj'
+      - 'Source/**/*.xml'
 
 ################################################################################
 # Job: compile → copy DLL → commit & push
