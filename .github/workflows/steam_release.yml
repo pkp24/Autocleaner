@@ -33,11 +33,17 @@ jobs:
           
           # Copy the mod files to the release directory
           cp -r About temp_release/
-          cp -r Assemblies temp_release/
-          cp -r Defs temp_release/
           cp -r Languages temp_release/
           cp -r Sounds temp_release/
           cp -r Textures temp_release/
+          
+          # Copy all version-specific directories (1.1 through 1.6)
+          cp -r 1.1 temp_release/
+          cp -r 1.2 temp_release/
+          cp -r 1.3 temp_release/
+          cp -r 1.4 temp_release/
+          cp -r 1.5 temp_release/
+          cp -r 1.6 temp_release/
 
       - name: Upload to Steam Workshop
         uses: arma-actions/workshop-upload@v1
