@@ -38,6 +38,11 @@ namespace Autocleaner
                         Pawn pawn = PawnGenerator.GeneratePawn(req);
 
                         autocleaner = GenSpawn.Spawn(pawn, pos, map) as PawnAutocleaner;
+                        if (autocleaner != null)
+                        {
+                            // Newly created cleaners start with no charge
+                            autocleaner.charge = 0f;
+                        }
                     }
                     else
                     {
